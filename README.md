@@ -11,7 +11,7 @@ Each skill lives in its own folder with a `SKILL.md`.
 |---|---|---|
 | **taxlocus-sales-tax** | [`taxlocus-sales-tax/`](./taxlocus-sales-tax/SKILL.md) | Guides Claude in using the **TaxLocus MCP connector** to answer US sales tax questions — rate lookups, economic nexus, product taxability, and filing calendars. Picks the right tool, applies correct sourcing/nexus rules, treats unknown taxability as "verify" (not exempt), surfaces source citations, and enforces the US-only / not-tax-advice guardrails. |
 | **taxlocus-payroll-tax** | [`taxlocus-payroll-tax/`](./taxlocus-payroll-tax/SKILL.md) | Guides Claude in answering US **payroll-tax** questions via TaxLocus — federal FICA/FUTA, state PIT and SUTA wage bases, state reciprocity, and local income tax in 8 states (PA, OH, IN, MD, MI, NY, MO, DE). Surfaces coverage gaps honestly for non-covered states, refuses to compute paycheck withholding, and enforces the not-tax-advice / not-withholding-tables guardrail. |
-| **taxlocus-api** | [`taxlocus-api/`](./taxlocus-api/SKILL.md) | Guides AI coding assistants in **integrating the TaxLocus REST API / MCP** into a codebase — rate lookups, cart/checkout tax calculation, economic-nexus tracking, taxability, exemption certificates, and filing-ready reports. |
+| **taxlocus-api** | [`taxlocus-api/`](./taxlocus-api/SKILL.md) | Guides AI coding assistants in **integrating the TaxLocus REST API / MCP** into a codebase — rate lookups, cart/checkout tax calculation, economic-nexus tracking, taxability, exemption certificates, and state-return worksheets (local schedules are not filled in). |
 
 ## Links
 
