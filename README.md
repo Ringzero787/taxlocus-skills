@@ -1,5 +1,7 @@
 # TaxLocus MCP & Agent Skills
 
+[![Taxlocus MCP server](https://mcprush.com/badge/taxlocus-mcp/card.svg)](https://mcprush.com/to/taxlocus-mcp?ref=badge)
+
 Official [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server reference and [Agent Skills](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills) for working with **US sales tax and payroll tax** via [TaxLocus](https://taxlocus.com):
 
 - **Remote MCP Server (Streamable HTTP):** `https://api.taxlocus.com/mcp`
