@@ -1,955 +1,951 @@
 {
-  "result": {
-    "tools": [
-      {
-        "name": "lookup_rate",
-        "title": "Look up sales tax rate",
-        "description": "Resolve the combined sales-tax rate, jurisdiction breakdown, taxability flag, and sourcing rule for a location (lat/lng or address) and product category. Categories use a dotted taxonomy (e.g. goods.general, food.grocery, software.saas); common aliases like general/groceries/saas are also accepted. The rate is for the location you send unless you also send `seller_location`, or an `entity_id` whose entity has a stored business location (see list_entities; `sourcing_detail.seller_location_source` then reads `entity`, so tell the user the stored location was used): then, for an in-state sale in a state that sources it to the seller (AZ, IL, MO, MS, OH, TX, UT, VA; PA before 2026), the rate is for the seller's location. `sourcing_detail` says which point was rated and what the in-state and remote rules are. Read `taxability` first: `unknown` means TaxLocus has no rule for that category there, and the 0 rate is not an exemption, so do not report it as one. When `collectable` is false (`unsettled` lists why: taxability_unknown, rule_provisional, zip_centroid, holiday_provisional) `computed_tax` is null: say the answer is not settled and do not present a tax amount to collect. Each `breakdown` line carries its rate's `citation`, and `includes` when one line stands for several taxes (an Illinois city line is the city, county and transit taxes combined). Rates are current as of `as_of` and their cited source, which may be newer than what you remember: a rate you recall is not grounds to doubt or adjust the answer. If you think it is wrong, point the user to the cited source instead. Report every entry in `warnings` (zip_centroid, no_local_jurisdiction, taxability_unknown, rule_provisional, holiday_provisional, unmapped_district, taxability_caveat, local_lease_tax, sourcing_point, reduced_rate_area, no_sales_tax) to the user alongside the rate. With zip_centroid or no_local_jurisdiction the answer carries an `exception_id`: TaxLocus recorded the location for research against official sources, and the account's Lookup exceptions page shows the result. `reduced_rate_area` means the point is in a New Jersey Urban Enterprise Zone or Salem County: a qualifying seller there may charge 3.3125% on in-person sales of goods, but the rate returned is the regular 6.625% and is correct unless the user says the seller qualifies; `reduced_rate_areas` has the rule and its citation. `no_sales_tax` means the state (OR, MT, NH, DE) has no sales tax: say so plainly; the 0 is the settled answer.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "lat": {
-              "type": "number",
-              "minimum": -90,
-              "maximum": 90
-            },
-            "lng": {
-              "type": "number",
-              "minimum": -180,
-              "maximum": 180
-            },
-            "address": {
-              "type": "object",
-              "properties": {
-                "line1": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "city": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "state": {
-                  "type": "string",
-                  "minLength": 2,
-                  "maxLength": 2
-                },
-                "postal_code": {
-                  "type": "string",
-                  "minLength": 5
-                }
-              },
-              "required": [
-                "line1",
-                "city",
-                "state",
-                "postal_code"
-              ],
-              "additionalProperties": false
-            },
-            "product_category": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Product category. Canonical codes use a dotted taxonomy — e.g. goods.general, food.grocery, food.prepared, clothing.general, software.saas, software.prewritten, medical.rx, medical.otc, publications.books. Common aliases are also accepted (e.g. general, groceries, clothing, saas, prescription_drugs), and retired codes (e.g. medical.prescription_drugs) resolve to their canonical category."
-            },
-            "sale_amount": {
-              "type": "number",
-              "minimum": 0
-            },
-            "as_of": {
-              "type": "string",
-              "format": "date"
-            },
-            "customer_ref": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 256
-            },
-            "sku": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 256
-            },
-            "b2b": {
-              "type": "boolean"
-            },
-            "seller_location": {
-              "type": "object",
-              "properties": {
-                "lat": {
-                  "type": "number",
-                  "minimum": -90,
-                  "maximum": 90
-                },
-                "lng": {
-                  "type": "number",
-                  "minimum": -180,
-                  "maximum": 180
-                },
-                "address": {
-                  "$ref": "#/properties/address"
-                }
-              },
-              "additionalProperties": false,
-              "description": "Optional. The seller's place of business for this sale: where the order is received or the goods ship from. When it is in the same state as the delivery address and that state sources in-state sales to the seller (AZ, IL, MO, MS, OH, TX, UT, VA; PA before 2026), the rate is for this location instead. See sourcing_detail on the response."
-            },
-            "entity_id": {
-              "type": "string",
-              "format": "uuid",
-              "description": "Optional. A tracked entity of yours. When you send no seller_location and the entity has a stored business location, that location is used as seller_location, and sourcing_detail says so (seller_location_source: \"entity\"). A seller_location in the request always wins."
-            }
+  "tools": [
+    {
+      "name": "lookup_rate",
+      "title": "Look up sales tax rate",
+      "description": "Resolve the combined sales-tax rate, jurisdiction breakdown, taxability flag, and sourcing rule for a location (lat/lng or address) and product category. Categories use a dotted taxonomy (e.g. goods.general, food.grocery, software.saas); common aliases like general/groceries/saas are also accepted. The rate is for the location you send unless you also send `seller_location`, or an `entity_id` whose entity has a stored business location (see list_entities; `sourcing_detail.seller_location_source` then reads `entity`, so tell the user the stored location was used): then, for an in-state sale in a state that sources it to the seller (AZ, IL, MO, MS, OH, TX, UT, VA; PA before 2026), the rate is for the seller's location. `sourcing_detail` says which point was rated and what the in-state and remote rules are. Read `taxability` first: `unknown` means TaxLocus has no rule for that category there, and the 0 rate is not an exemption, so do not report it as one. When `collectable` is false (`unsettled` lists why: taxability_unknown, rule_provisional, zip_centroid, holiday_provisional) `computed_tax` is null: say the answer is not settled and do not present a tax amount to collect. Each `breakdown` line carries its rate's `citation`, and `includes` when one line stands for several taxes (an Illinois city line is the city, county and transit taxes combined). Rates are current as of `as_of` and their cited source, which may be newer than what you remember: a rate you recall is not grounds to doubt or adjust the answer. If you think it is wrong, point the user to the cited source instead. Report every entry in `warnings` (zip_centroid, no_local_jurisdiction, taxability_unknown, rule_provisional, holiday_provisional, unmapped_district, taxability_caveat, local_lease_tax, sourcing_point, reduced_rate_area, no_sales_tax) to the user alongside the rate. With zip_centroid or no_local_jurisdiction the answer carries an `exception_id`: TaxLocus recorded the location for research against official sources, and the account's Lookup exceptions page shows the result. `reduced_rate_area` means the point is in a New Jersey Urban Enterprise Zone or Salem County: a qualifying seller there may charge 3.3125% on in-person sales of goods, but the rate returned is the regular 6.625% and is correct unless the user says the seller qualifies; `reduced_rate_areas` has the rule and its citation. `no_sales_tax` means the state (OR, MT, NH, DE) has no sales tax: say so plainly; the 0 is the settled answer.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
           },
-          "required": [
-            "product_category"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "check_nexus",
-        "title": "Check economic nexus",
-        "description": "Given year-to-date sales and transaction counts, report whether a seller has crossed a state's economic-nexus threshold.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "state": {
-              "type": "string",
-              "minLength": 2,
-              "maxLength": 2
-            },
-            "ytd_sales": {
-              "type": "number",
-              "minimum": 0
-            },
-            "ytd_transactions": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "include_marketplace_sales": {
-              "type": "boolean"
-            }
+          "lng": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
           },
-          "required": [
-            "state",
-            "ytd_sales",
-            "ytd_transactions"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "filing_calendar",
-        "title": "Get filing calendar",
-        "description": "Return a state's filing frequency and upcoming sales-tax return due dates. Frequency is assigned on annual tax liability — pass annual_tax_collected for accuracy, or annual_revenue to estimate it via the state rate.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "state": {
-              "type": "string",
-              "minLength": 2,
-              "maxLength": 2
-            },
-            "annual_tax_collected": {
-              "type": "number",
-              "minimum": 0
-            },
-            "annual_revenue": {
-              "type": "number",
-              "minimum": 0
-            },
-            "registration_date": {
-              "type": "string",
-              "format": "date"
-            }
-          },
-          "required": [
-            "state"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "taxability_check",
-        "title": "Check product taxability",
-        "description": "Report whether one or more product categories are taxable in a state, with the treatment, the rule's `confidence` and source citation. A `provisional` or `inferred` rule is not settled: say so. Categories use a dotted taxonomy (e.g. goods.general, food.grocery, software.saas); common aliases like general/groceries/saas are also accepted.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "state": {
-              "type": "string",
-              "minLength": 2,
-              "maxLength": 2
-            },
-            "product_category": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Product category. Canonical codes use a dotted taxonomy — e.g. goods.general, food.grocery, food.prepared, clothing.general, software.saas, software.prewritten, medical.rx, medical.otc, publications.books. Common aliases are also accepted (e.g. general, groceries, clothing, saas, prescription_drugs), and retired codes (e.g. medical.prescription_drugs) resolve to their canonical category."
-            },
-            "product_categories": {
-              "type": "array",
-              "items": {
+          "address": {
+            "type": "object",
+            "properties": {
+              "line1": {
                 "type": "string",
                 "minLength": 1
               },
-              "description": "Product category. Canonical codes use a dotted taxonomy — e.g. goods.general, food.grocery, food.prepared, clothing.general, software.saas, software.prewritten, medical.rx, medical.otc, publications.books. Common aliases are also accepted (e.g. general, groceries, clothing, saas, prescription_drugs), and retired codes (e.g. medical.prescription_drugs) resolve to their canonical category."
-            }
+              "city": {
+                "type": "string",
+                "minLength": 1
+              },
+              "state": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 2
+              },
+              "postal_code": {
+                "type": "string",
+                "minLength": 5
+              }
+            },
+            "required": [
+              "line1",
+              "city",
+              "state",
+              "postal_code"
+            ],
+            "additionalProperties": false
           },
-          "required": [
-            "state"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "lookup_payroll_rates",
-        "title": "Look up US payroll-tax rates",
-        "description": "Return federal payroll-tax constants (FICA + FUTA), state personal income tax top-line, state SUTA wage base, any local income-tax jurisdictions for the state (PA EIT, OH municipal, MD county, NYC/Yonkers, etc.), and state-to-state reciprocity agreements. Reference data only — not a withholding-calculation engine; the consumer applies these rates against W-4 / wage data. Same corpus as the open dataset at github.com/Ringzero787/taxlocus-data. Local jurisdictions are paged: PA publishes ~2,600 EIT municipalities and OH ~890, so pass `locality` to narrow to the one you need rather than paging the whole state. `local_jurisdictions_total` reports how many matched. `year` defaults to the current calendar year; a section with no rows for that year is served from its latest earlier year and marked with `year_served` and `fallback: true`. State disability and paid-leave contributions (CA SDI, NY PFL, NJ TDI/FLI, WA PFML and similar) are not included.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "state": {
-              "type": "string",
-              "minLength": 2,
-              "maxLength": 2
-            },
-            "year": {
-              "type": "integer",
-              "minimum": 2020,
-              "maximum": 2099,
-              "description": "Tax year; defaults to the current calendar year. A section with no rows for this year is served from its latest earlier year, with `year_served` and `fallback: true` on that section."
-            },
-            "locality": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "description": "Filter local income-tax jurisdictions by name, case-insensitive substring match (e.g. 'Pittsburgh', 'Shaler'). Strongly recommended in states with thousands of jurisdictions such as PA and OH."
-            },
-            "limit": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 25,
-              "description": "Max local jurisdictions to return."
-            },
-            "offset": {
-              "type": "integer",
-              "minimum": 0,
-              "default": 0,
-              "description": "Local jurisdictions to skip, for paging."
-            }
+          "product_category": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Product category. Canonical codes use a dotted taxonomy — e.g. goods.general, food.grocery, food.prepared, clothing.general, software.saas, software.prewritten, medical.rx, medical.otc, publications.books. Common aliases are also accepted (e.g. general, groceries, clothing, saas, prescription_drugs), and retired codes (e.g. medical.prescription_drugs) resolve to their canonical category."
           },
-          "required": [
-            "state"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
+          "sale_amount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date"
+          },
+          "customer_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sku": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "b2b": {
+            "type": "boolean"
+          },
+          "seller_location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              },
+              "address": {
+                "$ref": "#/properties/address"
+              }
+            },
+            "additionalProperties": false,
+            "description": "Optional. The seller's place of business for this sale: where the order is received or the goods ship from. When it is in the same state as the delivery address and that state sources in-state sales to the seller (AZ, IL, MO, MS, OH, TX, UT, VA; PA before 2026), the rate is for this location instead. See sourcing_detail on the response."
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional. A tracked entity of yours. When you send no seller_location and the entity has a stored business location, that location is used as seller_location, and sourcing_detail says so (seller_location_source: \"entity\"). A seller_location in the request always wins."
+          }
         },
-        "annotations": {
-          "readOnlyHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
+        "required": [
+          "product_category"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      {
-        "name": "record_transaction",
-        "title": "Record a sale for nexus tracking",
-        "description": "Append a sale to a tracked entity's ledger. Updates the running economic-nexus totals and returns the entity's threshold status for that state. Idempotent on idempotency_key.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "entity_id": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "state": {
-              "type": "string",
-              "minLength": 2,
-              "maxLength": 2
-            },
-            "sale_amount": {
-              "type": "number",
-              "minimum": 0
-            },
-            "transaction_date": {
-              "type": "string",
-              "format": "date"
-            },
-            "is_marketplace": {
-              "type": "boolean"
-            },
-            "is_exempt": {
-              "type": "boolean"
-            },
-            "external_ref": {
-              "type": "string"
-            },
-            "idempotency_key": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "check_nexus",
+      "title": "Check economic nexus",
+      "description": "Given year-to-date sales and transaction counts, report whether a seller has crossed a state's economic-nexus threshold.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "ytd_sales": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ytd_transactions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "include_marketplace_sales": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "state",
+          "ytd_sales",
+          "ytd_transactions"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "filing_calendar",
+      "title": "Get filing calendar",
+      "description": "Return a state's filing frequency and upcoming sales-tax return due dates. Frequency is assigned on annual tax liability — pass annual_tax_collected for accuracy, or annual_revenue to estimate it via the state rate.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "annual_tax_collected": {
+            "type": "number",
+            "minimum": 0
+          },
+          "annual_revenue": {
+            "type": "number",
+            "minimum": 0
+          },
+          "registration_date": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "taxability_check",
+      "title": "Check product taxability",
+      "description": "Report whether one or more product categories are taxable in a state, with the treatment, the rule's `confidence` and source citation. A `provisional` or `inferred` rule is not settled: say so. Categories use a dotted taxonomy (e.g. goods.general, food.grocery, software.saas); common aliases like general/groceries/saas are also accepted.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "product_category": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Product category. Canonical codes use a dotted taxonomy — e.g. goods.general, food.grocery, food.prepared, clothing.general, software.saas, software.prewritten, medical.rx, medical.otc, publications.books. Common aliases are also accepted (e.g. general, groceries, clothing, saas, prescription_drugs), and retired codes (e.g. medical.prescription_drugs) resolve to their canonical category."
+          },
+          "product_categories": {
+            "type": "array",
+            "items": {
               "type": "string",
               "minLength": 1
             },
-            "county_fips": {
-              "type": "string",
-              "minLength": 1
+            "description": "Product category. Canonical codes use a dotted taxonomy — e.g. goods.general, food.grocery, food.prepared, clothing.general, software.saas, software.prewritten, medical.rx, medical.otc, publications.books. Common aliases are also accepted (e.g. general, groceries, clothing, saas, prescription_drugs), and retired codes (e.g. medical.prescription_drugs) resolve to their canonical category."
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "lookup_payroll_rates",
+      "title": "Look up US payroll-tax rates",
+      "description": "Return federal payroll-tax constants (FICA + FUTA), state personal income tax top-line, state SUTA wage base, any local income-tax jurisdictions for the state (PA EIT, OH municipal, MD county, NYC/Yonkers, etc.), and state-to-state reciprocity agreements. Reference data only — not a withholding-calculation engine; the consumer applies these rates against W-4 / wage data. Same corpus as the open dataset at github.com/Ringzero787/taxlocus-data. Local jurisdictions are paged: PA publishes ~2,600 EIT municipalities and OH ~890, so pass `locality` to narrow to the one you need rather than paging the whole state. `local_jurisdictions_total` reports how many matched. `year` defaults to the current calendar year; a section with no rows for that year is served from its latest earlier year and marked with `year_served` and `fallback: true`. State disability and paid-leave contributions (CA SDI, NY PFL, NJ TDI/FLI, WA PFML and similar) are not included.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "year": {
+            "type": "integer",
+            "minimum": 2020,
+            "maximum": 2099,
+            "description": "Tax year; defaults to the current calendar year. A section with no rows for this year is served from its latest earlier year, with `year_served` and `fallback: true` on that section."
+          },
+          "locality": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Filter local income-tax jurisdictions by name, case-insensitive substring match (e.g. 'Pittsburgh', 'Shaler'). Strongly recommended in states with thousands of jurisdictions such as PA and OH."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Max local jurisdictions to return."
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Local jurisdictions to skip, for paging."
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "record_transaction",
+      "title": "Record a sale for nexus tracking",
+      "description": "Append a sale to a tracked entity's ledger. Updates the running economic-nexus totals and returns the entity's threshold status for that state. Idempotent on idempotency_key.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "sale_amount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "transaction_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "is_marketplace": {
+            "type": "boolean"
+          },
+          "is_exempt": {
+            "type": "boolean"
+          },
+          "external_ref": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "county_fips": {
+            "type": "string",
+            "minLength": 1
+          },
+          "place_geoid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tax_collected": {
+            "type": "number",
+            "minimum": 0
+          },
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lng": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "line1": {
+                "type": "string",
+                "minLength": 1
+              },
+              "city": {
+                "type": "string",
+                "minLength": 1
+              },
+              "state": {
+                "$ref": "#/properties/state"
+              },
+              "postal_code": {
+                "type": "string",
+                "minLength": 5
+              }
             },
-            "place_geoid": {
-              "type": "string",
-              "minLength": 1
-            },
-            "tax_collected": {
-              "type": "number",
-              "minimum": 0
-            },
-            "lat": {
-              "type": "number",
-              "minimum": -90,
-              "maximum": 90
-            },
-            "lng": {
-              "type": "number",
-              "minimum": -180,
-              "maximum": 180
-            },
-            "address": {
+            "required": [
+              "line1",
+              "city",
+              "state",
+              "postal_code"
+            ],
+            "additionalProperties": false
+          },
+          "call_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tax_source": {
+            "type": "string",
+            "enum": [
+              "taxlocus",
+              "platform",
+              "other"
+            ]
+          },
+          "platform_tax_lines": {
+            "type": "array",
+            "items": {
               "type": "object",
               "properties": {
-                "line1": {
+                "title": {
                   "type": "string",
-                  "minLength": 1
+                  "maxLength": 200
                 },
-                "city": {
+                "rate": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "jurisdiction": {
                   "type": "string",
-                  "minLength": 1
-                },
-                "state": {
-                  "$ref": "#/properties/state"
-                },
-                "postal_code": {
-                  "type": "string",
-                  "minLength": 5
+                  "maxLength": 200
                 }
               },
-              "required": [
-                "line1",
-                "city",
-                "state",
-                "postal_code"
-              ],
               "additionalProperties": false
             },
-            "call_id": {
-              "type": "string",
-              "format": "uuid"
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "entity_id",
+          "state",
+          "sale_amount"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "record_refund",
+      "title": "Record a refund for nexus tracking",
+      "description": "Book a full or partial refund against a tracked entity's ledger and return the entity's updated threshold status for that state. Pass POSITIVE refund_amount / tax_refunded — the service stores them negative so ledger totals net. Supply refunded_ref (the original sale's external_ref) where possible: the refund then inherits that sale's exempt/marketplace/jurisdiction fields, and cumulative refunds are capped at the original amount. Refunds reduce the dollar totals thresholds are measured on but NOT the transaction count. Idempotent on idempotency_key.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "refund_amount": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "tax_refunded": {
+            "type": "number",
+            "minimum": 0
+          },
+          "refund_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "refunded_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "external_ref": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "is_marketplace": {
+            "type": "boolean"
+          },
+          "is_exempt": {
+            "type": "boolean"
+          },
+          "county_fips": {
+            "type": "string",
+            "minLength": 1
+          },
+          "place_geoid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lng": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "line1": {
+                "type": "string",
+                "minLength": 1
+              },
+              "city": {
+                "type": "string",
+                "minLength": 1
+              },
+              "state": {
+                "$ref": "#/properties/state"
+              },
+              "postal_code": {
+                "type": "string",
+                "minLength": 5
+              }
             },
-            "tax_source": {
-              "type": "string",
-              "enum": [
-                "taxlocus",
-                "platform",
-                "other"
-              ]
-            },
-            "platform_tax_lines": {
-              "type": "array",
-              "items": {
+            "required": [
+              "line1",
+              "city",
+              "state",
+              "postal_code"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "entity_id",
+          "refund_amount"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "nexus_status",
+      "title": "Get running nexus status",
+      "description": "Return a tracked entity's running economic-nexus status across every state it has recorded sales in, with distance to threshold.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "entity_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "get_workpaper",
+      "title": "Fetch a stored TaxLocus answer",
+      "description": "Return the request and response TaxLocus stored for one earlier call (the call_id on a lookup_rate or cart response), the SHA-256 hashes written when it was answered, and whether the stored bodies still match them. Use it to reprint what TaxLocus told you for an invoice. Not metered.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "call_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "call_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "replay_workpaper",
+      "title": "Replay a stored TaxLocus answer",
+      "description": "Re-run a stored lookup_rate or cart answer with its original as_of and rated point against today's data. Returns both answers, the differences, and the dated, cited corpus changes in that state since the original corpus_version. Not metered.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "call_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "call_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "list_entities",
+      "title": "List tracked entities",
+      "description": "List the account's tracked seller entities (archived ones are left out): id, name, home_state, timezone and the stored business `location` (null when none is set). Use an id from here as entity_id in record_transaction, nexus_status, the filing tools, and lookup_rate. Not metered.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "create_entity",
+      "title": "Create a tracked entity",
+      "description": "Create a seller entity to track economic nexus for: a name, and optionally its home_state, IANA timezone and business `location` (a street address, or lat and lng). An address is matched once, when it is saved; report `location.resolution` to the user: `zip_centroid` means the street did not match and the location is the ZIP code's centre, so ask for a corrected address. Free and Indie accounts can have one active entity; a second needs Pro (feature_not_in_tier). Report the new entity's id. Not metered.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "home_state": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "address": {
                 "type": "object",
                 "properties": {
-                  "title": {
+                  "line1": {
                     "type": "string",
-                    "maxLength": 200
+                    "minLength": 1
                   },
-                  "rate": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1
-                  },
-                  "amount": {
-                    "type": "number"
-                  },
-                  "jurisdiction": {
+                  "city": {
                     "type": "string",
-                    "maxLength": 200
+                    "minLength": 1
+                  },
+                  "state": {
+                    "$ref": "#/properties/home_state"
+                  },
+                  "postal_code": {
+                    "type": "string",
+                    "minLength": 5
                   }
                 },
+                "required": [
+                  "line1",
+                  "city",
+                  "state",
+                  "postal_code"
+                ],
                 "additionalProperties": false
               },
-              "maxItems": 100
-            }
-          },
-          "required": [
-            "entity_id",
-            "state",
-            "sale_amount"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": false,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "record_refund",
-        "title": "Record a refund for nexus tracking",
-        "description": "Book a full or partial refund against a tracked entity's ledger and return the entity's updated threshold status for that state. Pass POSITIVE refund_amount / tax_refunded — the service stores them negative so ledger totals net. Supply refunded_ref (the original sale's external_ref) where possible: the refund then inherits that sale's exempt/marketplace/jurisdiction fields, and cumulative refunds are capped at the original amount. Refunds reduce the dollar totals thresholds are measured on but NOT the transaction count. Idempotent on idempotency_key.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "entity_id": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "state": {
-              "type": "string",
-              "minLength": 2,
-              "maxLength": 2
-            },
-            "refund_amount": {
-              "type": "number",
-              "exclusiveMinimum": 0
-            },
-            "tax_refunded": {
-              "type": "number",
-              "minimum": 0
-            },
-            "refund_date": {
-              "type": "string",
-              "format": "date"
-            },
-            "refunded_ref": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 256
-            },
-            "external_ref": {
-              "type": "string"
-            },
-            "idempotency_key": {
-              "type": "string",
-              "minLength": 1
-            },
-            "is_marketplace": {
-              "type": "boolean"
-            },
-            "is_exempt": {
-              "type": "boolean"
-            },
-            "county_fips": {
-              "type": "string",
-              "minLength": 1
-            },
-            "place_geoid": {
-              "type": "string",
-              "minLength": 1
-            },
-            "lat": {
-              "type": "number",
-              "minimum": -90,
-              "maximum": 90
-            },
-            "lng": {
-              "type": "number",
-              "minimum": -180,
-              "maximum": 180
-            },
-            "address": {
-              "type": "object",
-              "properties": {
-                "line1": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "city": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "state": {
-                  "$ref": "#/properties/state"
-                },
-                "postal_code": {
-                  "type": "string",
-                  "minLength": 5
-                }
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
               },
-              "required": [
-                "line1",
-                "city",
-                "state",
-                "postal_code"
-              ],
-              "additionalProperties": false
-            }
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false,
+            "description": "The business's place of business: where orders are received or goods ship from. Used as the seller location on lookup and cart calls that send this entity's entity_id and no seller_location."
           },
-          "required": [
-            "entity_id",
-            "refund_amount"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
+          "timezone": {
+            "type": "string",
+            "minLength": 1
+          }
         },
-        "annotations": {
-          "readOnlyHint": false,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      {
-        "name": "nexus_status",
-        "title": "Get running nexus status",
-        "description": "Return a tracked entity's running economic-nexus status across every state it has recorded sales in, with distance to threshold.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "entity_id": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "required": [
-            "entity_id"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
       },
-      {
-        "name": "get_workpaper",
-        "title": "Fetch a stored TaxLocus answer",
-        "description": "Return the request and response TaxLocus stored for one earlier call (the call_id on a lookup_rate or cart response), the SHA-256 hashes written when it was answered, and whether the stored bodies still match them. Use it to reprint what TaxLocus told you for an invoice. Not metered.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "call_id": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "required": [
-            "call_id"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "replay_workpaper",
-        "title": "Replay a stored TaxLocus answer",
-        "description": "Re-run a stored lookup_rate or cart answer with its original as_of and rated point against today's data. Returns both answers, the differences, and the dated, cited corpus changes in that state since the original corpus_version. Not metered.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "call_id": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "required": [
-            "call_id"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "list_entities",
-        "title": "List tracked entities",
-        "description": "List the account's tracked seller entities (archived ones are left out): id, name, home_state, timezone and the stored business `location` (null when none is set). Use an id from here as entity_id in record_transaction, nexus_status, the filing tools, and lookup_rate. Not metered.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "type": "object",
-          "properties": {}
-        },
-        "annotations": {
-          "readOnlyHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "create_entity",
-        "title": "Create a tracked entity",
-        "description": "Create a seller entity to track economic nexus for: a name, and optionally its home_state, IANA timezone and business `location` (a street address, or lat and lng). An address is matched once, when it is saved; report `location.resolution` to the user: `zip_centroid` means the street did not match and the location is the ZIP code's centre, so ask for a corrected address. Free and Indie accounts can have one active entity; a second needs Pro (feature_not_in_tier). Report the new entity's id. Not metered.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "name": {
-              "type": "string",
-              "minLength": 1
-            },
-            "home_state": {
-              "type": "string",
-              "minLength": 2,
-              "maxLength": 2
-            },
-            "location": {
-              "type": "object",
-              "properties": {
-                "address": {
-                  "type": "object",
-                  "properties": {
-                    "line1": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "city": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "state": {
-                      "$ref": "#/properties/home_state"
-                    },
-                    "postal_code": {
-                      "type": "string",
-                      "minLength": 5
-                    }
-                  },
-                  "required": [
-                    "line1",
-                    "city",
-                    "state",
-                    "postal_code"
-                  ],
-                  "additionalProperties": false
-                },
-                "lat": {
-                  "type": "number",
-                  "minimum": -90,
-                  "maximum": 90
-                },
-                "lng": {
-                  "type": "number",
-                  "minimum": -180,
-                  "maximum": 180
-                }
-              },
-              "additionalProperties": false,
-              "description": "The business's place of business: where orders are received or goods ship from. Used as the seller location on lookup and cart calls that send this entity's entity_id and no seller_location."
-            },
-            "timezone": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "name"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": false,
-          "destructiveHint": false,
-          "idempotentHint": false,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "update_entity",
-        "title": "Update a tracked entity",
-        "description": "Change an entity's name, home_state, timezone or business `location`. Only the fields you send change; home_state, timezone or location set to null clears it, so send null only when the user asks to remove it. The location is used as the seller location on lookup_rate calls that pass this entity_id and no seller_location. Report what changed, and `location.resolution` when the location was set (`zip_centroid`: the street did not match). Not metered.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "name": {
-              "type": "string",
-              "minLength": 1
-            },
-            "home_state": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 2,
-                  "maxLength": 2
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "timezone": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 1
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "location": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "address": {
-                      "type": "object",
-                      "properties": {
-                        "line1": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "city": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "state": {
-                          "$ref": "#/properties/home_state/anyOf/0"
-                        },
-                        "postal_code": {
-                          "type": "string",
-                          "minLength": 5
-                        }
-                      },
-                      "required": [
-                        "line1",
-                        "city",
-                        "state",
-                        "postal_code"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "lat": {
-                      "type": "number",
-                      "minimum": -90,
-                      "maximum": 90
-                    },
-                    "lng": {
-                      "type": "number",
-                      "minimum": -180,
-                      "maximum": 180
-                    }
-                  },
-                  "additionalProperties": false,
-                  "description": "The business's place of business: where orders are received or goods ship from. Used as the seller location on lookup and cart calls that send this entity's entity_id and no seller_location."
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "The business's place of business: where orders are received or goods ship from. Used as the seller location on lookup and cart calls that send this entity's entity_id and no seller_location."
-            },
-            "entity_id": {
-              "type": "string",
-              "format": "uuid",
-              "description": "The entity's id, from list_entities or create_entity."
-            }
-          },
-          "required": [
-            "entity_id"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": false,
-          "destructiveHint": true,
-          "idempotentHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "set_registration",
-        "title": "Set sales-tax registration in a state",
-        "description": "Record whether the business is registered to collect sales tax in a state where the entity is tracked (it has recorded sales there; otherwise state_not_tracked). registered: false clears it. Returns the state's filing obligation: nexus_status, registered, filing_frequency (monthly is assumed until set: see filing_frequency_set), next_due, and, once nexus is met and the business is registered, the recent `returns` as filed, due or late. Report the late returns to the user. Not metered.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "registered": {
-              "type": "boolean",
-              "description": "true: the business is registered to collect sales tax in this state. false: clears the registration."
-            },
-            "entity_id": {
-              "type": "string",
-              "format": "uuid",
-              "description": "The entity's id, from list_entities or create_entity."
-            },
-            "state": {
-              "type": "string",
-              "description": "Two-letter state code (the 50 states or DC), e.g. TX."
-            }
-          },
-          "required": [
-            "registered",
-            "entity_id",
-            "state"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": false,
-          "destructiveHint": true,
-          "idempotentHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "set_filing_frequency",
-        "title": "Set filing frequency in a state",
-        "description": "Record the filing frequency a state assigned the business: monthly, quarterly or annual (the state's registration letter or portal says which). The entity must be tracked in the state. Returns the state's filing obligation with the returns listed for the new frequency; report the next due date. Not metered.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "frequency": {
-              "type": "string",
-              "enum": [
-                "monthly",
-                "quarterly",
-                "annual"
-              ],
-              "description": "The filing frequency the state assigned: monthly, quarterly or annual."
-            },
-            "entity_id": {
-              "type": "string",
-              "format": "uuid",
-              "description": "The entity's id, from list_entities or create_entity."
-            },
-            "state": {
-              "type": "string",
-              "description": "Two-letter state code (the 50 states or DC), e.g. TX."
-            }
-          },
-          "required": [
-            "frequency",
-            "entity_id",
-            "state"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": false,
-          "destructiveHint": true,
-          "idempotentHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
-      },
-      {
-        "name": "mark_period_filed",
-        "title": "Mark a sales-tax return filed",
-        "description": "Mark the return for one filing period as filed (filed: true), or remove the mark (filed: false). The period label must match the state's filing frequency: YYYY-MM for monthly, YYYY-Qn for quarterly, YYYY for annual (period_frequency_mismatch otherwise; set_filing_frequency first if the frequency is wrong). Only mark a period filed when the user says the return was filed. Returns the period, filed and filed_at; confirm it to the user. Not metered.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "filed": {
-              "type": "boolean",
-              "description": "true: the return for this period was filed. false: unmarks it."
-            },
-            "entity_id": {
-              "type": "string",
-              "format": "uuid",
-              "description": "The entity's id, from list_entities or create_entity."
-            },
-            "state": {
-              "type": "string",
-              "description": "Two-letter state code (the 50 states or DC), e.g. TX."
-            },
-            "period": {
-              "type": "string",
-              "pattern": "^\\d{4}(-(0[1-9]|1[0-2]|Q[1-4]))?$",
-              "description": "The filing period: YYYY-MM for a monthly filer, YYYY-Qn for quarterly (calendar quarters), YYYY for annual. It must match the state's filing frequency."
-            }
-          },
-          "required": [
-            "filed",
-            "entity_id",
-            "state",
-            "period"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "readOnlyHint": false,
-          "destructiveHint": true,
-          "idempotentHint": true,
-          "openWorldHint": false
-        },
-        "execution": {
-          "taskSupport": "forbidden"
-        }
+      "execution": {
+        "taskSupport": "forbidden"
       }
-    ]
-  },
-  "jsonrpc": "2.0",
-  "id": 2
+    },
+    {
+      "name": "update_entity",
+      "title": "Update a tracked entity",
+      "description": "Change an entity's name, home_state, timezone or business `location`. Only the fields you send change; home_state, timezone or location set to null clears it, so send null only when the user asks to remove it. The location is used as the seller location on lookup_rate calls that pass this entity_id and no seller_location. Report what changed, and `location.resolution` when the location was set (`zip_centroid`: the street did not match). Not metered.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "home_state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "address": {
+                    "type": "object",
+                    "properties": {
+                      "line1": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "city": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "state": {
+                        "$ref": "#/properties/home_state/anyOf/0"
+                      },
+                      "postal_code": {
+                        "type": "string",
+                        "minLength": 5
+                      }
+                    },
+                    "required": [
+                      "line1",
+                      "city",
+                      "state",
+                      "postal_code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lng": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  }
+                },
+                "additionalProperties": false,
+                "description": "The business's place of business: where orders are received or goods ship from. Used as the seller location on lookup and cart calls that send this entity's entity_id and no seller_location."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The business's place of business: where orders are received or goods ship from. Used as the seller location on lookup and cart calls that send this entity's entity_id and no seller_location."
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The entity's id, from list_entities or create_entity."
+          }
+        },
+        "required": [
+          "entity_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "set_registration",
+      "title": "Set sales-tax registration in a state",
+      "description": "Record whether the business is registered to collect sales tax in a state where the entity is tracked (it has recorded sales there; otherwise state_not_tracked). registered: false clears it. Returns the state's filing obligation: nexus_status, registered, filing_frequency (monthly is assumed until set: see filing_frequency_set), next_due, and, once nexus is met and the business is registered, the recent `returns` as filed, due or late. Report the late returns to the user. Not metered.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "registered": {
+            "type": "boolean",
+            "description": "true: the business is registered to collect sales tax in this state. false: clears the registration."
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The entity's id, from list_entities or create_entity."
+          },
+          "state": {
+            "type": "string",
+            "description": "Two-letter state code (the 50 states or DC), e.g. TX."
+          }
+        },
+        "required": [
+          "registered",
+          "entity_id",
+          "state"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "set_filing_frequency",
+      "title": "Set filing frequency in a state",
+      "description": "Record the filing frequency a state assigned the business: monthly, quarterly or annual (the state's registration letter or portal says which). The entity must be tracked in the state. Returns the state's filing obligation with the returns listed for the new frequency; report the next due date. Not metered.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "quarterly",
+              "annual"
+            ],
+            "description": "The filing frequency the state assigned: monthly, quarterly or annual."
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The entity's id, from list_entities or create_entity."
+          },
+          "state": {
+            "type": "string",
+            "description": "Two-letter state code (the 50 states or DC), e.g. TX."
+          }
+        },
+        "required": [
+          "frequency",
+          "entity_id",
+          "state"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "mark_period_filed",
+      "title": "Mark a sales-tax return filed",
+      "description": "Mark the return for one filing period as filed (filed: true), or remove the mark (filed: false). The period label must match the state's filing frequency: YYYY-MM for monthly, YYYY-Qn for quarterly, YYYY for annual (period_frequency_mismatch otherwise; set_filing_frequency first if the frequency is wrong). Only mark a period filed when the user says the return was filed. Returns the period, filed and filed_at; confirm it to the user. Not metered.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filed": {
+            "type": "boolean",
+            "description": "true: the return for this period was filed. false: unmarks it."
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The entity's id, from list_entities or create_entity."
+          },
+          "state": {
+            "type": "string",
+            "description": "Two-letter state code (the 50 states or DC), e.g. TX."
+          },
+          "period": {
+            "type": "string",
+            "pattern": "^\\d{4}(-(0[1-9]|1[0-2]|Q[1-4]))?$",
+            "description": "The filing period: YYYY-MM for a monthly filer, YYYY-Qn for quarterly (calendar quarters), YYYY for annual. It must match the state's filing frequency."
+          }
+        },
+        "required": [
+          "filed",
+          "entity_id",
+          "state",
+          "period"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    }
+  ]
 }
