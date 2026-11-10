@@ -86,3 +86,9 @@ Each skill lives in its own folder with a `SKILL.md`:
 
 Apache-2.0. TaxLocus output is informational only — not tax or legal advice;
 verify against the cited source before relying on a value for compliance.
+
+---
+
+## License
+
+The skills and reference files in this repository are released under the [MIT License](./LICENSE). The TaxLocus API, MCP server and rate data are a separate hosted service with their own [Terms of Service](https://taxlocus.com/terms); the open rate tables are published under CC-BY-4.0 at [taxlocus-data](https://github.com/Ringzero787/taxlocus-data). "TaxLocus" and its logo are not licensed under MIT.
